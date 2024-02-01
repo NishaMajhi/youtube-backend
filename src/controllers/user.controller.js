@@ -161,9 +161,9 @@ const logoutUser = asyncHandler(async (req, res) => {
         await User.findByIdAndUpdate(
             req.user._id,
             {
-                $set:
+                $unset:
                 {
-                    refreshToken: undefined
+                    refreshToken: 1
                 }
             },
             { new: true }
@@ -174,9 +174,10 @@ const logoutUser = asyncHandler(async (req, res) => {
             secure: true
         }
 
-        res.status(200).clearCookie("accessToken", options).clearCookie("refreshToken", options)
-
-        res.status(200).json({ message: "Log out Successfully" })
+        res.status(200)
+            .clearCookie("accessToken", options)
+            .clearCookie("refreshToken", options)
+            .json({ message: "Log out Successfully" })
 
     } catch (error) {
         throw new Error(error)
@@ -362,9 +363,45 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                     foreignField: "subscriber",
                     as: "subscriberTo"
                 }
+            },
+            {
+                $addFields: {
+                    subscribersCount: {
+                        $size: "$subscribers"
+                    },
+                    channelsSubscriberedToCount: {
+                        $size: "$subscriberTo"
+                    },
+                    isSubscribed: {
+                        $condition: {
+                            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+                            then: true,
+                            else: false
+                        }
+                    }
+                }
+            },
+            {
+                $project: {
+                    userName: 1,
+                    email: 1,
+                    fullName: 1,
+                    avatar: 1,
+                    coverImage: 1,
+                    subscribersCount: 1,
+                    channelsSubscriberedToCount: 1,
+                    isSubscribed: 1,
+                }
             }
 
         ])
+
+        if (!channel?.length) {
+            res.status(400)
+            throw new Error("Channel does not exists")
+        }
+
+        res.status(200).json({ message: "User Channel Data", channel: channel[0] })
 
     } catch (error) {
         res.status(500)
@@ -380,5 +417,6 @@ export {
     changeCurrentPassword,
     getCurrentUser,
     updateUserAccountDetails,
+    getUserChannelProfile,
     updateUserAvatar
 }
