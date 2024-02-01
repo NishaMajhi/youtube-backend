@@ -27,4 +27,4 @@ userRouter.post('/login', loginUser)
 userRouter.post('/logout', verifyJWT, logoutUser)
 userRouter.post('/refresh-token', refreshAccessToken)
 
-export default userRouter
+export { userRouter }
